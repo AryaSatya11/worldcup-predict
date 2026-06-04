@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piala Dunia - Tebak Skor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans min-h-screen p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-10 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-800 pb-6">
+            <div class="text-center md:text-left">
+                <h1 class="text-4xl font-extrabold text-amber-500 tracking-wide uppercase">🏆 World Cup Predictor</h1>
+                <p class="text-slate-400 mt-2">Rancang strategi, tebak skor pertandingan, dan kumpulkan poin tertinggi!</p>
+            </div>
+            <div id="user-profile-box" class="hidden bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-4">
+                <span id="user-display-name" class="text-sm font-semibold text-amber-400"></span>
+                <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main class="bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-700">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-slate-200">
+                📅 Jadwal Pertandingan
+            </h2>
+            
+            <div id="match-container" class="space-y-4">
+                <p class="text-slate-400 text-center py-4">Sedang memuat jadwal pertandingan dari server...</p>
+            </div>
+        </main>
+
+        <section class="mt-12 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+            <h2 class="text-2xl font-extrabold text-amber-500 tracking-wide mb-4 flex items-center gap-2">
+                📊 PAPAN PERINGKAT (LEADERBOARD)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider">
+                            <th class="py-3 px-4 w-16 text-center">Rank</th>
+                            <th class="py-3 px-4">Username</th>
+                            <th class="py-3 px-4 text-center w-24">Total Poin</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body" class="text-sm divide-y divide-slate-700/50">
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-slate-500">Memuat data peringkat...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Ambal data user yang sedang login dari localStorage
+        const loggedInUser = JSON.parse(localStorage.getItem('user'));
+
+        // Fungsi pengecekan login awal
+        function checkLoginStatus() {
+            if (!loggedInUser || !loggedInUser.id) {
+                alert('Waduh bro, lo harus login dulu biar bisa akses halaman ini dan ngisi prediksi!');
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            // Tampilin info user di header kalau ada
+            const profileBox = document.getElementById('user-profile-box');
+            const displayName = document.getElementById('user-display-name');
+            if (profileBox && displayName) {
+                displayName.textContent = `👋 ${loggedInUser.username || 'User'}`;
+                profileBox.classList.remove('hidden');
+            }
+            return true;
+        }
+
+        // 1. Fungsi Utama Memuat Jadwal Sekaligus Tebakan Lama User
+        async function loadMatches() {
+            // Jalankan proteksi login. Kalau gagal, stop fungsi ini.
+            if (!checkLoginStatus()) return;
+
+            try {
+                // Ambil data jadwal pertandingan
+                const responseMatch = await fetch('/api/matches');
+                const matches = await responseMatch.json();
+                
+                // Ambil data tebakan user karena user sudah tervalidasi login
+                let userPredictions = [];
+                try {
+                    const responsePred = await fetch(`/api/predictions/${loggedInUser.id}`);
+                    userPredictions = await responsePred.json();
+                } catch (err) {
+                    console.error("Gagal memuat tebakan lama user:", err);
+                }
+
+                const container = document.getElementById('match-container');
+                container.innerHTML = ''; 
+
+                if (matches.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center p-6 bg-slate-850 rounded-xl border border-dashed border-slate-700">
+                            <p class="text-slate-400">Belum ada jadwal pertandingan di database.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Render data pertandingan ke HTML
+                matches.forEach(match => {
+                    const matchDate = new Date(match.match_date).toLocaleString('id-ID', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                    });
+
+                    // Cek apakah ada tebakan lama untuk match ini
+                    const savedPrediction = userPredictions.find(p => p.match_id === match.id);
+                    const predHomeValue = savedPrediction ? savedPrediction.prediksi_home : '';
+                    const predAwayValue = savedPrediction ? savedPrediction.prediksi_away : '';
+
+                    // Proteksi: Kunci input jika pertandingan sudah selesai (FINISHED)
+                    const isFinished = match.status === 'FINISHED';
+
+                    // 🟢 LOGIKA RIWAYAT POIN: Hitung kecocokan skor secara lokal untuk badging info user
+                    let poinDapatText = '';
+                    if (isFinished && savedPrediction) {
+                        const skorCocok = (savedPrediction.prediksi_home === match.home_score) && 
+                                          (savedPrediction.prediksi_away === match.away_score);
+                        if (skorCocok) {
+                            poinDapatText = `<span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-2.5 py-1 rounded-md font-bold border border-emerald-500/30 tracking-wide">🎉 +3 POIN (TEPAT)</span>`;
+                        } else {
+                            poinDapatText = `<span class="bg-red-500/20 text-red-400 text-[10px] px-2.5 py-1 rounded-md font-bold border border-red-500/30 tracking-wide">❌ +0 POIN (SALAH)</span>`;
+                        }
+                    } else if (isFinished && !savedPrediction) {
+                        poinDapatText = `<span class="bg-slate-700 text-slate-400 text-[10px] px-2.5 py-1 rounded-md font-bold border border-slate-600 tracking-wide">⚪ GAK IKUT TEBAK</span>`;
+                    }
+
+                    const matchCard = `
+                        <div class="bg-slate-750 p-5 rounded-2xl flex flex-col items-center gap-4 border ${isFinished ? 'border-emerald-500/30 bg-slate-800/50 shadow-inner' : 'border-slate-700/60 hover:border-amber-500/50'} transition duration-200 shadow-md">
+                            
+                            <div class="text-center">
+                                <span class="bg-amber-500/10 text-amber-400 text-[11px] px-3 py-1 rounded-full font-bold tracking-wide uppercase border border-amber-500/20">
+                                    ${match.stage}
+                                </span>
+                                <p class="text-xs text-slate-400 font-medium mt-2 flex items-center justify-center gap-1">
+                                    🕒 ${matchDate} WIB
+                                </p>
+                            </div>
+
+                            ${isFinished ? `
+                                <div class="bg-emerald-500/10 border border-emerald-500/20 px-5 py-2 rounded-xl text-center shadow-sm">
+                                    <span class="text-[9px] text-emerald-400 font-bold uppercase tracking-widest block mb-0.5">Skor Akhir Pertandingan</span>
+                                    <div class="text-xl font-black text-emerald-400 tracking-widest">
+                                        ${match.home_score} : ${match.away_score}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="w-full flex items-center justify-between grid grid-cols-3 gap-2 max-w-xl my-1">
+                                <div class="text-right font-bold text-base text-slate-100 truncate pr-2">
+                                    ${match.home_team}
+                                </div>
+                                
+                                <div class="flex flex-col justify-center items-center gap-1">
+                                    ${isFinished ? '' : '<span class="text-[9px] text-slate-500 font-semibold uppercase tracking-wider">Tebakan Lo</span>'}
+                                    <div class="bg-slate-900 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-2 shadow-inner ${isFinished ? 'opacity-40' : ''}">
+                                        <input type="number" placeholder="0" min="0"
+                                               value="${predHomeValue}" 
+                                               ${isFinished ? 'disabled' : ''} 
+                                               class="w-7 bg-transparent text-center font-extrabold text-xl focus:outline-none text-amber-400 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                               id="pred-home-${match.id}">
+                                        
+                                        <span class="text-slate-600 font-extrabold text-lg">:</span>
+                                        
+                                        <input type="number" placeholder="0" min="0"
+                                               value="${predAwayValue}" 
+                                               ${isFinished ? 'disabled' : ''} 
+                                               class="w-7 bg-transparent text-center font-extrabold text-xl focus:outline-none text-amber-400 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                               id="pred-away-${match.id}">
+                                    </div>
+                                </div>
+                                
+                                <div class="text-left font-bold text-base text-slate-100 truncate pl-2">
+                                    ${match.away_team}
+                                </div>
+                            </div>
+
+                            <div class="w-full max-w-xs flex flex-col items-center gap-2 mt-1">
+                                ${isFinished 
+                                    ? `
+                                        <div class="w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded-xl border border-slate-700/50 text-center uppercase tracking-wider flex items-center justify-center gap-2">
+                                            🔒 Terkunci
+                                        </div>
+                                        ${poinDapatText}
+                                      `
+                                    : `<button onclick="submitPrediction(${match.id})" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-extrabold py-2 rounded-xl text-xs uppercase tracking-wider shadow-md hover:shadow-amber-500/10 cursor-pointer transition duration-200">
+                                        ${savedPrediction ? '🔄 Update Tebakan' : '🔥 Kirim Tebakan'}
+                                       </button>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', matchCard);
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('match-container').innerHTML = '<p class="text-red-400 text-center">Gagal menyambung ke server backend.</p>';
+            }
+        }
+
+        // 2. Fungsi Kirim/Update Tebakan Skor
+        async function submitPrediction(matchId) {
+            if (!loggedInUser || !loggedInUser.id) {
+                alert('Lo harus login dulu, bro!');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const homeScore = document.getElementById(`pred-home-${matchId}`).value;
+            const awayScore = document.getElementById(`pred-away-${matchId}`).value;
+
+            if (homeScore === '' || awayScore === '') {
+                alert('Isi dulu skor tebakan lo, bro!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: loggedInUser.id, 
+                        match_id: matchId,
+                        prediksi_home: parseInt(homeScore),
+                        prediksi_away: parseInt(awayScore)
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert('🔥 Mantap! ' + result.message);
+                    loadMatches(); // Reload jadwal biar text tombol berubah otomatis
+                } else {
+                    alert('Gagal: ' + (result.details || result.error));
+                }
+            } catch (error) {
+                alert('Terjadi error saat mengirim data.');
+            }
+        }
+
+        // 3. Fungsi Ambil Data Leaderboard
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                const users = await response.json();
+                
+                const tbody = document.getElementById('leaderboard-body');
+                tbody.innerHTML = '';
+
+                if (users.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-slate-500">Belum ada data peringkat user.</td></tr>`;
+                    return;
+                }
+
+                users.forEach((user, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-700/30 transition';
+                    
+                    let rankDisplay = index + 1;
+                    if (index === 0) rankDisplay = '🥇';
+                    else if (index === 1) rankDisplay = '🥈';
+                    else if (index === 2) rankDisplay = '🥉';
+
+                    row.innerHTML = `
+                        <td class="py-3 px-4 text-center font-bold text-base">${rankDisplay}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-200">${user.username}</td>
+                        <td class="py-3 px-4 text-center font-extrabold text-amber-400">${user.total_points || 0} pts</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Gagal memuat leaderboard:', error);
+            }
+        }
+
+        // Fungsi fungsi tambahan logout
+        function logout() {
+            localStorage.removeItem('user');
+            alert('Berhasil logout! Sampai jumpa lagi, bro.');
+            window.location.href = 'login.html';
+        }
+
+        window.onload = function() {
+            loadMatches();
+            loadLeaderboard();
+        };
+    </script>
+</body>
+</html>

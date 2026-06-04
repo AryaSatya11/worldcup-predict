@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - World Cup Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans min-h-screen p-6">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8 border-b border-slate-700 pb-4">
+            <div>
+                <h1 class="text-3xl font-extrabold text-amber-500 tracking-wide">🛠️ DASHBOARD ADMIN</h1>
+                <p class="text-slate-400 text-sm mt-1">Kelola jadwal pertandingan & input skor asli di sini.</p>
+            </div>
+            <a href="index.html" class="bg-slate-800 hover:bg-slate-700 text-sm px-4 py-2 rounded-lg border border-slate-700 transition">
+                Kembali ke Web Utama
+            </a>
+        </div>
+
+        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl mb-8">
+            <h2 class="text-xl font-bold text-slate-200 mb-4 flex items-center gap-2">
+                ➕ Tambah / Edit Jadwal Pertandingan
+            </h2>
+            <form id="add-match-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tahap / Grup</label>
+                    <input type="text" id="stage" required placeholder="Contoh: Group A, Babak 16 Besar" 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500 text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Waktu Pertandingan</label>
+                    <input type="datetime-local" id="match_date" required 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500 text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tim Home (Tuan Rumah)</label>
+                    <input type="text" id="team_home" required placeholder="Contoh: Qatar" 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500 text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tim Away (Tamu)</label>
+                    <input type="text" id="team_away" required placeholder="Contoh: Ecuador" 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500 text-white">
+                </div>
+                <div class="md:col-span-2 mt-2">
+                    <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2.5 rounded-lg transition shadow-lg cursor-pointer">
+                        Simpan Jadwal ke Database
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <h2 class="text-xl font-bold text-slate-200 mb-4">🏃‍♂️ List Pertandingan & Input Hasil</h2>
+        <div id="admin-matches-list" class="space-y-4">
+            <p class="text-center text-slate-500">Sedang memuat jadwal pertandingan...</p>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // PROTEKSI HALAMAN ADMIN (PASSWORD)
+        // ==========================================
+        const PASSWORD_ADMIN_RAHASIA = "Arya110523"; 
+
+        function proteksiHalamanAdmin() {
+            const inputPassword = prompt("🔒 Akses Terbatas! Masukkan Password Admin untuk Masuk:");
+            
+            if (inputPassword !== PASSWORD_ADMIN_RAHASIA) {
+                alert("❌ Password salah atau akses dibatalkan! Lo gak punya hak akses ke halaman ini.");
+                window.location.href = "index.html"; 
+                return false;
+            } else {
+                alert("🔓 Akses diterima! Selamat datang, Admin.");
+                return true;
+            }
+        }
+
+        const isAccessGranted = proteksiHalamanAdmin();
+
+        // 1. Ambil data pertandingan saat halaman dibuka
+        async function loadAdminMatches() {
+            if (!isAccessGranted) return;
+
+            try {
+                const response = await fetch('/api/matches');
+                const matches = await response.json();
+                
+                const container = document.getElementById('admin-matches-list');
+                container.innerHTML = ''; 
+
+                if (matches.length === 0) {
+                    container.innerHTML = '<p class="text-center text-slate-500">Tidak ada jadwal pertandingan.</p>';
+                    return;
+                }
+
+                matches.forEach(match => {
+                    const matchDate = new Date(match.match_date).toLocaleString('id-ID', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                    });
+
+                    const matchCard = document.createElement('div');
+                    matchCard.className = 'bg-slate-800 p-5 rounded-xl border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4';
+                    
+                    const isFinished = match.status === 'FINISHED';
+
+                    matchCard.innerHTML = `
+                        <div class="flex flex-col w-full md:w-5/12 text-center md:text-left">
+                            <span class="text-xs font-bold text-amber-500/80">${match.stage} - ${matchDate} WIB</span>
+                            <div class="flex items-center gap-3 mt-1 justify-center md:justify-start">
+                                <span class="font-bold text-lg text-slate-200">${match.home_team}</span>
+                                <span class="text-slate-500 text-sm">VS</span>
+                                <span class="font-bold text-lg text-slate-200">${match.away_team}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-center md:justify-end">
+                            <form onsubmit="submitActualScore(event, ${match.id})" class="flex items-center gap-3">
+                                <input type="number" id="home-${match.id}" min="0" required 
+                                       value="${match.home_score !== null ? match.home_score : ''}"
+                                       ${isFinished ? 'disabled' : ''}
+                                       class="w-16 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-center font-bold text-amber-400 focus:outline-none focus:border-amber-500 disabled:opacity-50">
+                                
+                                <span class="text-slate-500 font-bold">:</span>
+                                
+                                <input type="number" id="away-${match.id}" min="0" required 
+                                       value="${match.away_score !== null ? match.away_score : ''}"
+                                       ${isFinished ? 'disabled' : ''}
+                                       class="w-16 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-center font-bold text-amber-400 focus:outline-none focus:border-amber-500 disabled:opacity-50">
+                                
+                                ${isFinished 
+                                    ? `<span class="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-2 rounded-lg border border-emerald-500/20">Selesai</span>`
+                                    : `<button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-1.5 rounded-lg text-sm transition cursor-pointer">Update Skor</button>`
+                                }
+                            </form>
+
+                            <button onclick="deleteMatch(${match.id}, '${match.home_team} vs ${match.away_team}')" 
+                                    class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 font-semibold px-3 py-1.5 rounded-lg text-sm transition cursor-pointer flex items-center gap-1">
+                                🗑️ Hapus
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(matchCard);
+                });
+            } catch (error) {
+                console.error('Gagal memuat data:', error);
+            }
+        }
+
+        // 2. Fungsi Kirim Form Jadwal Baru ke Backend
+        document.getElementById('add-match-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!isAccessGranted) return;
+
+            const stage = document.getElementById('stage').value;
+            const match_date = document.getElementById('match_date').value;
+            const team_home = document.getElementById('team_home').value;
+            const team_away = document.getElementById('team_away').value;
+
+            try {
+                const response = await fetch('/api/admin/add-match', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stage, match_date, team_home, team_away })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('🎉 ' + result.message);
+                    document.getElementById('add-match-form').reset(); 
+                    loadAdminMatches(); 
+                } else {
+                    alert('❌ Gagal: ' + (result.details || result.error));
+                }
+            } catch (error) {
+                alert('Terjadi kesalahan koneksi server.');
+            }
+        });
+
+        // 3. Fungsi Update Hasil Skor Akhir
+        async function submitActualScore(event, matchId) {
+            event.preventDefault();
+            if (!isAccessGranted) return;
+
+            const homeScore = document.getElementById(`home-${matchId}`).value;
+            const awayScore = document.getElementById(`away-${matchId}`).value;
+
+            try {
+                const response = await fetch('/api/admin/update-match', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        match_id: matchId,
+                        score_home_actual: homeScore,
+                        score_away_actual: awayScore
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert('🎉 ' + result.message);
+                    loadAdminMatches();
+                } else {
+                    alert('❌ Gagal: ' + result.error);
+                }
+            } catch (error) {
+                alert('Terjadi kesalahan koneksi server.');
+            }
+        }
+
+        // 4. Fungsi Hapus Pertandingan Permanen
+        async function deleteMatch(matchId, matchName) {
+            if (!isAccessGranted) return;
+            
+            const konfirmasi = confirm(`⚠️ PENTING: Apakah lo yakin mau menghapus pertandingan "${matchName}"?\n\nSemua data tebakan/prediksi dari user untuk match ini akan ikut terhapus otomatis secara permanen.`);
+            if (!konfirmasi) return;
+
+            try {
+                const response = await fetch(`/api/admin/delete-match/${matchId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('🗑️ Sukses: ' + result.message);
+                    loadAdminMatches(); // Refresh data tanpa reload halaman penuh
+                } else {
+                    alert('❌ Gagal menghapus: ' + result.error);
+                }
+            } catch (error) {
+                alert('Terjadi kesalahan koneksi saat menghapus data.');
+            }
+        }
+
+        window.onload = function() {
+            if (isAccessGranted) {
+                loadAdminMatches();
+            }
+        };
+    </script>
+</body>
+</html>
