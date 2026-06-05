@@ -4,299 +4,730 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Final Whistle</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --gold: #F5A623;
+            --gold-dim: rgba(245,166,35,0.12);
+            --gold-glow: rgba(245,166,35,0.35);
+            --emerald: #34D399;
+            --emerald-dim: rgba(52,211,153,0.12);
+            --red: #F87171;
+            --red-dim: rgba(248,113,113,0.12);
+            --bg: #0D1117;
+            --surface: #161B22;
+            --border: rgba(255,255,255,0.07);
+            --border-hover: rgba(245,166,35,0.4);
+            --text: #E6EDF3;
+            --muted: #7D8590;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.5;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 900px;
+            height: 500px;
+            background: radial-gradient(ellipse at center, rgba(245,166,35,0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wrapper {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1.75rem;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid var(--border);
+            animation: fadeDown 0.6s ease both;
+        }
+
+        .brand h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(2.4rem, 6vw, 3.6rem);
+            letter-spacing: 0.06em;
+            color: var(--gold);
+            line-height: 1;
+            text-shadow: 0 0 40px var(--gold-glow);
+        }
+
+        .brand p {
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-top: 0.3rem;
+            font-weight: 500;
+        }
+
+        #user-profile-box {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.45rem 0.9rem;
+            border-radius: 999px;
+        }
+
+        #user-display-name {
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: var(--gold);
+        }
+
+        .btn-logout {
+            background: var(--red-dim);
+            color: var(--red);
+            border: 1px solid rgba(248,113,113,0.25);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            letter-spacing: 0.04em;
+        }
+        .btn-logout:hover { background: var(--red); color: #fff; }
+
+        .section-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.6rem;
+            letter-spacing: 0.08em;
+            color: var(--text);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #match-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .match-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 1.4rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+            animation: fadeUp 0.5s ease both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .match-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(245,166,35,0.03) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .match-card:not(.is-finished):hover {
+            border-color: var(--border-hover);
+            box-shadow: 0 0 30px rgba(245,166,35,0.08);
+            transform: translateY(-2px);
+        }
+
+        .match-card.is-finished {
+            border-color: rgba(52,211,153,0.18);
+            background: linear-gradient(135deg, rgba(52,211,153,0.03) 0%, var(--surface) 60%);
+        }
+
+        .stage-badge {
+            background: var(--gold-dim);
+            color: var(--gold);
+            border: 1px solid rgba(245,166,35,0.2);
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0.3rem 0.9rem;
+            border-radius: 999px;
+        }
+
+        .match-time {
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-weight: 500;
+            margin-top: 0.15rem;
+        }
+
+        .final-score-box {
+            background: var(--emerald-dim);
+            border: 1px solid rgba(52,211,153,0.2);
+            border-radius: 12px;
+            padding: 0.5rem 1.5rem;
+            text-align: center;
+        }
+
+        .final-score-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--emerald);
+            margin-bottom: 0.15rem;
+        }
+
+        .final-score-value {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.8rem;
+            letter-spacing: 0.1em;
+            color: var(--emerald);
+        }
+
+        .teams-row {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 0.75rem;
+            max-width: 480px;
+        }
+
+        .team-side {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .team-flag {
+            font-size: 2.6rem;
+            line-height: 1;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+        }
+
+        .team-name {
+            font-weight: 700;
+            font-size: 0.82rem;
+            color: var(--text);
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .score-cluster {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .score-cluster-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .score-inputs {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.5rem 0.9rem;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+
+        .score-inputs:focus-within {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px var(--gold-dim);
+        }
+
+        .score-inputs.locked {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .score-inputs input {
+            width: 2rem;
+            background: transparent;
+            border: none;
+            outline: none;
+            text-align: center;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            color: var(--gold);
+            -moz-appearance: textfield;
+        }
+        .score-inputs input::-webkit-outer-spin-button,
+        .score-inputs input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+        .score-divider {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.4rem;
+            color: var(--border);
+            user-select: none;
+        }
+
+        .action-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+            width: 100%;
+            max-width: 220px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--gold);
+            color: #0D1117;
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 0.8rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 0.65rem 1.5rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-submit::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 100%);
+            transform: translateX(-100%);
+            transition: transform 0.4s;
+        }
+
+        .btn-submit:hover { background: #f0c050; transform: scale(1.03); box-shadow: 0 6px 24px var(--gold-glow); }
+        .btn-submit:hover::after { transform: translateX(100%); }
+        .btn-submit:active { transform: scale(0.97); }
+
+        .btn-locked {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 0.6rem 1.5rem;
+            border-radius: 999px;
+            text-align: center;
+        }
+
+        .point-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            padding: 0.3rem 0.85rem;
+            border-radius: 999px;
+        }
+        .point-badge.correct { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(52,211,153,0.25); }
+        .point-badge.wrong   { background: var(--red-dim);     color: var(--red);     border: 1px solid rgba(248,113,113,0.25); }
+        .point-badge.skip    { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+
+        .leaderboard-section {
+            margin-top: 3rem;
+            animation: fadeUp 0.6s 0.2s ease both;
+        }
+
+        .lb-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        .lb-card table { width: 100%; border-collapse: collapse; }
+        .lb-card thead tr { border-bottom: 1px solid var(--border); }
+        .lb-card thead th {
+            padding: 0.85rem 1.25rem;
+            text-align: left;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .lb-card tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+        .lb-card tbody tr:last-child { border-bottom: none; }
+        .lb-card tbody tr:hover { background: rgba(255,255,255,0.03); }
+        .lb-card td { padding: 0.85rem 1.25rem; font-size: 0.88rem; }
+
+        .lb-rank { text-align: center; font-weight: 800; font-size: 1rem; width: 3rem; }
+        .lb-name { font-weight: 600; color: var(--text); }
+        .lb-pts  { text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; color: var(--gold); letter-spacing: 0.06em; }
+
+        .lb-card tbody tr.rank-1 { background: rgba(245,166,35,0.05); }
+        .lb-card tbody tr.rank-1 .lb-name { color: var(--gold); }
+
+        .empty-state {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        @keyframes fadeUp   { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeDown { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
+
+        #match-container .match-card:nth-child(1)  { animation-delay: 0.05s; }
+        #match-container .match-card:nth-child(2)  { animation-delay: 0.12s; }
+        #match-container .match-card:nth-child(3)  { animation-delay: 0.18s; }
+        #match-container .match-card:nth-child(4)  { animation-delay: 0.23s; }
+        #match-container .match-card:nth-child(5)  { animation-delay: 0.27s; }
+        #match-container .match-card:nth-child(n+6){ animation-delay: 0.30s; }
+
+        @media (max-width: 520px) {
+            .team-flag { font-size: 2rem; }
+            .team-name { font-size: 0.75rem; }
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-white font-sans min-h-screen p-8">
+<body>
 
-    <div class="max-w-4xl mx-auto">
-        <header class="text-center mb-10 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-800 pb-6">
-            <div class="text-center md:text-left">
-                <h1 class="text-4xl font-extrabold text-amber-500 tracking-wide uppercase">🏆 Final Whistle</h1>
-                <p class="text-slate-400 mt-2">Jadwal Pertandingan, tebak skor pertandingan, dan kumpulkan poin tertinggi!</p>
-            </div>
-            <div id="user-profile-box" class="hidden bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-4">
-                <span id="user-display-name" class="text-sm font-semibold text-amber-400"></span>
-                <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">
-                    Logout
-                </button>
-            </div>
-        </header>
+<div class="wrapper">
 
-        <main class="bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-700">
-            <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-slate-200">
-                📅 Jadwal Pertandingan
-            </h2>
-            
-            <div id="match-container" class="space-y-4">
-                <p class="text-slate-400 text-center py-4">Sedang memuat jadwal pertandingan dari server...</p>
-            </div>
-        </main>
+    <header>
+        <div class="brand">
+            <h1>🏆 Final Whistle</h1>
+            <p>Jadwal pertandingan, tebak skor, &amp; kumpulkan poin tertinggi!</p>
+        </div>
+        <div id="user-profile-box">
+            <span id="user-display-name"></span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
 
-        <section class="mt-12 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
-            <h2 class="text-2xl font-extrabold text-amber-500 tracking-wide mb-4 flex items-center gap-2">
-                📊 PAPAN PERINGKAT (LEADERBOARD)
-            </h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider">
-                            <th class="py-3 px-4 w-16 text-center">Rank</th>
-                            <th class="py-3 px-4">Username</th>
-                            <th class="py-3 px-4 text-center w-24">Total Poin</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-body" class="text-sm divide-y divide-slate-700/50">
-                        <tr>
-                            <td colspan="3" class="text-center py-4 text-slate-500">Memuat data peringkat...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </div>
+    <main>
+        <p class="section-title">📅 Jadwal Pertandingan</p>
+        <div id="match-container">
+            <div class="empty-state">Sedang memuat jadwal pertandingan dari server…</div>
+        </div>
+    </main>
 
-    <script>
-        // Ambal data user yang sedang login dari localStorage
-        const loggedInUser = JSON.parse(localStorage.getItem('user'));
+    <section class="leaderboard-section">
+        <p class="section-title">📊 Papan Peringkat</p>
+        <div class="lb-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="text-align:center;">Rank</th>
+                        <th>Username</th>
+                        <th style="text-align:center;">Total Poin</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <tr><td colspan="3" class="empty-state">Memuat data peringkat…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-        // Fungsi pengecekan login awal
-        function checkLoginStatus() {
-            if (!loggedInUser || !loggedInUser.id) {
-                alert('Waduh bro, lo harus login dulu biar bisa akses halaman ini dan ngisi prediksi!');
-                window.location.href = 'login.html';
-                return false;
-            }
-            
-            // Tampilin info user di header kalau ada
-            const profileBox = document.getElementById('user-profile-box');
-            const displayName = document.getElementById('user-display-name');
-            if (profileBox && displayName) {
-                displayName.textContent = `👋 ${loggedInUser.username || 'User'}`;
-                profileBox.classList.remove('hidden');
-            }
-            return true;
+</div>
+
+<script>
+    const loggedInUser = JSON.parse(localStorage.getItem('user'));
+
+    // ─── PETA BENDERA KOMPREHENSIF (TOLERAN TERHADAP SPASI DAN KATA) ───
+    const MANUAL_FLAG_MAP = {
+        'MEXICO': '🇲🇽', 'MEKSIKO': '🇲🇽', 'MX': '🇲🇽',
+        'SOUTHAFRICA': '🇿🇦', 'AFRIKASELATAN': '🇿🇦', 'ZA': '🇿🇦',
+        'SOUTHKOREA': '🇰🇷', 'KOREASELATAN': '🇰🇷', 'KR': '🇰🇷',
+        'CZECHREPUBLIC': '🇨🇿', 'CEKO': '🇨🇿', 'CZ': '🇨🇿',
+        'INDONESIA': '🇮🇩', 'ID': '🇮🇩',
+        'THAILAND': '🇹🇭', 'TH': '🇹🇭',
+        'VIETNAM': '🇻🇳', 'VN': '🇻🇳',
+        'MALAYSIA': '🇲🇾', 'MY': '🇲🇾'
+    };
+
+    // ─── LOGIKA AMBIL BENDERA DENGAN VALIDASI UNTUK ISO CODE & FULL NAME ───
+    function getFlag(teamName) {
+        if (!teamName) return '🏳️';
+        
+        // 1. Bersihkan string dari spasi ganda/tunggal di tengah, lalu ubah ke UPPERCASE
+        const cleanName = teamName.toString().replace(/\s+/g, '').trim().toUpperCase();
+        
+        // 2. Cek kecocokan langsung ke Map Utama (Bisa mendeteksi kata rapat ataupun Kode ISO 2 huruf)
+        if (MANUAL_FLAG_MAP[cleanName]) {
+            return MANUAL_FLAG_MAP[cleanName];
         }
-
-        // 1. Fungsi Utama Memuat Jadwal Sekaligus Tebakan Lama User
-        async function loadMatches() {
-            // Jalankan proteksi login. Kalau gagal, stop fungsi ini.
-            if (!checkLoginStatus()) return;
-
+        
+        // 3. Fallback generator otomatis khusus jika input database lo adalah kode ISO 2 huruf murni murni
+        if (cleanName.length === 2) {
             try {
-                // Ambil data jadwal pertandingan
-                const responseMatch = await fetch('/api/matches');
-                const matches = await responseMatch.json();
-                
-                // Ambil data tebakan user karena user sudah tervalidasi login
-                let userPredictions = [];
-                try {
-                    const responsePred = await fetch(`/api/predictions/${loggedInUser.id}`);
-                    userPredictions = await responsePred.json();
-                } catch (err) {
-                    console.error("Gagal memuat tebakan lama user:", err);
-                }
-
-                const container = document.getElementById('match-container');
-                container.innerHTML = ''; 
-
-                if (matches.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center p-6 bg-slate-850 rounded-xl border border-dashed border-slate-700">
-                            <p class="text-slate-400">Belum ada jadwal pertandingan di database.</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Render data pertandingan ke HTML
-                matches.forEach(match => {
-                    const matchDate = new Date(match.match_date).toLocaleString('id-ID', {
-                        dateStyle: 'medium',
-                        timeStyle: 'short'
-                    });
-
-                    // Cek apakah ada tebakan lama untuk match ini
-                    const savedPrediction = userPredictions.find(p => p.match_id === match.id);
-                    const predHomeValue = savedPrediction ? savedPrediction.prediksi_home : '';
-                    const predAwayValue = savedPrediction ? savedPrediction.prediksi_away : '';
-
-                    // Proteksi: Kunci input jika pertandingan sudah selesai (FINISHED)
-                    const isFinished = match.status === 'FINISHED';
-
-                    // 🟢 LOGIKA RIWAYAT POIN: Hitung kecocokan skor secara lokal untuk badging info user
-                    let poinDapatText = '';
-                    if (isFinished && savedPrediction) {
-                        const skorCocok = (savedPrediction.prediksi_home === match.home_score) && 
-                                          (savedPrediction.prediksi_away === match.away_score);
-                        if (skorCocok) {
-                            poinDapatText = `<span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-2.5 py-1 rounded-md font-bold border border-emerald-500/30 tracking-wide">🎉 +3 POIN (TEPAT)</span>`;
-                        } else {
-                            poinDapatText = `<span class="bg-red-500/20 text-red-400 text-[10px] px-2.5 py-1 rounded-md font-bold border border-red-500/30 tracking-wide">❌ +0 POIN (SALAH)</span>`;
-                        }
-                    } else if (isFinished && !savedPrediction) {
-                        poinDapatText = `<span class="bg-slate-700 text-slate-400 text-[10px] px-2.5 py-1 rounded-md font-bold border border-slate-600 tracking-wide">⚪ GAK IKUT TEBAK</span>`;
-                    }
-
-                    const matchCard = `
-                        <div class="bg-slate-750 p-5 rounded-2xl flex flex-col items-center gap-4 border ${isFinished ? 'border-emerald-500/30 bg-slate-800/50 shadow-inner' : 'border-slate-700/60 hover:border-amber-500/50'} transition duration-200 shadow-md">
-                            
-                            <div class="text-center">
-                                <span class="bg-amber-500/10 text-amber-400 text-[11px] px-3 py-1 rounded-full font-bold tracking-wide uppercase border border-amber-500/20">
-                                    ${match.stage}
-                                </span>
-                                <p class="text-xs text-slate-400 font-medium mt-2 flex items-center justify-center gap-1">
-                                    🕒 ${matchDate} WIB
-                                </p>
-                            </div>
-
-                            ${isFinished ? `
-                                <div class="bg-emerald-500/10 border border-emerald-500/20 px-5 py-2 rounded-xl text-center shadow-sm">
-                                    <span class="text-[9px] text-emerald-400 font-bold uppercase tracking-widest block mb-0.5">Skor Akhir Pertandingan</span>
-                                    <div class="text-xl font-black text-emerald-400 tracking-widest">
-                                        ${match.home_score} : ${match.away_score}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            <div class="w-full flex items-center justify-between grid grid-cols-3 gap-2 max-w-xl my-1">
-                                <div class="text-right font-bold text-base text-slate-100 truncate pr-2">
-                                    ${match.home_team}
-                                </div>
-                                
-                                <div class="flex flex-col justify-center items-center gap-1">
-                                    ${isFinished ? '' : '<span class="text-[9px] text-slate-500 font-semibold uppercase tracking-wider">Tebakan Lo</span>'}
-                                    <div class="bg-slate-900 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-2 shadow-inner ${isFinished ? 'opacity-40' : ''}">
-                                        <input type="number" placeholder="0" min="0"
-                                               value="${predHomeValue}" 
-                                               ${isFinished ? 'disabled' : ''} 
-                                               class="w-7 bg-transparent text-center font-extrabold text-xl focus:outline-none text-amber-400 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                               id="pred-home-${match.id}">
-                                        
-                                        <span class="text-slate-600 font-extrabold text-lg">:</span>
-                                        
-                                        <input type="number" placeholder="0" min="0"
-                                               value="${predAwayValue}" 
-                                               ${isFinished ? 'disabled' : ''} 
-                                               class="w-7 bg-transparent text-center font-extrabold text-xl focus:outline-none text-amber-400 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                               id="pred-away-${match.id}">
-                                    </div>
-                                </div>
-                                
-                                <div class="text-left font-bold text-base text-slate-100 truncate pl-2">
-                                    ${match.away_team}
-                                </div>
-                            </div>
-
-                            <div class="w-full max-w-xs flex flex-col items-center gap-2 mt-1">
-                                ${isFinished 
-                                    ? `
-                                        <div class="w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded-xl border border-slate-700/50 text-center uppercase tracking-wider flex items-center justify-center gap-2">
-                                            🔒 Terkunci
-                                        </div>
-                                        ${poinDapatText}
-                                      `
-                                    : `<button onclick="submitPrediction(${match.id})" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-extrabold py-2 rounded-xl text-xs uppercase tracking-wider shadow-md hover:shadow-amber-500/10 cursor-pointer transition duration-200">
-                                        ${savedPrediction ? '🔄 Update Tebakan' : '🔥 Kirim Tebakan'}
-                                       </button>`
-                                }
-                            </div>
-                        </div>
-                    `;
-                    container.insertAdjacentHTML('beforeend', matchCard);
-                });
-
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('match-container').innerHTML = '<p class="text-red-400 text-center">Gagal menyambung ke server backend.</p>';
+                return cleanName.replace(/./g, char => 
+                    String.fromCodePoint(char.charCodeAt(0) + 127397)
+                );
+            } catch (e) {
+                return '🏳️';
             }
         }
+        
+        return '🏳️';
+    }
 
-        // 2. Fungsi Kirim/Update Tebakan Skor
-        async function submitPrediction(matchId) {
-            if (!loggedInUser || !loggedInUser.id) {
-                alert('Lo harus login dulu, bro!');
-                window.location.href = 'login.html';
-                return;
-            }
-
-            const homeScore = document.getElementById(`pred-home-${matchId}`).value;
-            const awayScore = document.getElementById(`pred-away-${matchId}`).value;
-
-            if (homeScore === '' || awayScore === '') {
-                alert('Isi dulu skor tebakan lo, bro!');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_id: loggedInUser.id, 
-                        match_id: matchId,
-                        prediksi_home: parseInt(homeScore),
-                        prediksi_away: parseInt(awayScore)
-                    })
-                });
-
-                const result = await response.json();
-                if (response.ok) {
-                    alert('🔥 Mantap! ' + result.message);
-                    loadMatches(); // Reload jadwal biar text tombol berubah otomatis
-                } else {
-                    alert('Gagal: ' + (result.details || result.error));
-                }
-            } catch (error) {
-                alert('Terjadi error saat mengirim data.');
-            }
-        }
-
-        // 3. Fungsi Ambil Data Leaderboard
-        async function loadLeaderboard() {
-            try {
-                const response = await fetch('/api/leaderboard');
-                const users = await response.json();
-                
-                const tbody = document.getElementById('leaderboard-body');
-                tbody.innerHTML = '';
-
-                if (users.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-slate-500">Belum ada data peringkat user.</td></tr>`;
-                    return;
-                }
-
-                users.forEach((user, index) => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-slate-700/30 transition';
-                    
-                    let rankDisplay = index + 1;
-                    if (index === 0) rankDisplay = '🥇';
-                    else if (index === 1) rankDisplay = '🥈';
-                    else if (index === 2) rankDisplay = '🥉';
-
-                    row.innerHTML = `
-                        <td class="py-3 px-4 text-center font-bold text-base">${rankDisplay}</td>
-                        <td class="py-3 px-4 font-semibold text-slate-200">${user.username}</td>
-                        <td class="py-3 px-4 text-center font-extrabold text-amber-400">${user.total_points || 0} pts</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } catch (error) {
-                console.error('Gagal memuat leaderboard:', error);
-            }
-        }
-
-        // Fungsi fungsi tambahan logout
-        function logout() {
-            localStorage.removeItem('user');
-            alert('Berhasil logout! Sampai jumpa lagi, bro.');
+    // ─── LOGIN CHECK ───
+    function checkLoginStatus() {
+        if (!loggedInUser || !loggedInUser.id) {
+            alert('Waduh bro, lo harus login dulu biar bisa akses halaman ini dan ngisi prediksi!');
             window.location.href = 'login.html';
+            return false;
+        }
+        const profileBox = document.getElementById('user-profile-box');
+        const displayName = document.getElementById('user-display-name');
+        if (profileBox && displayName) {
+            displayName.textContent = `👋 ${loggedInUser.username || 'User'}`;
+            profileBox.style.display = 'flex';
+        }
+        return true;
+    }
+
+    // ─── LOAD MATCHES ───
+    async function loadMatches() {
+        if (!checkLoginStatus()) return;
+
+        try {
+            const responseMatch = await fetch('/api/matches');
+            const matches = await responseMatch.json();
+
+            let userPredictions = [];
+            try {
+                const responsePred = await fetch(`/api/predictions/${loggedInUser.id}`);
+                userPredictions = await responsePred.json();
+            } catch (err) {
+                console.error("Gagal memuat tebakan lama user:", err);
+            }
+
+            const container = document.getElementById('match-container');
+            container.innerHTML = '';
+
+            if (matches.length === 0) {
+                container.innerHTML = `<div class="empty-state">Belum ada jadwal pertandingan di database.</div>`;
+                return;
+            }
+
+            matches.forEach(match => {
+                const matchDate = new Date(match.match_date).toLocaleString('id-ID', {
+                    dateStyle: 'medium', timeStyle: 'short'
+                });
+
+                const savedPrediction = userPredictions.find(p => p.match_id === match.id);
+                const predHomeValue = savedPrediction ? savedPrediction.prediksi_home : '';
+                const predAwayValue = savedPrediction ? savedPrediction.prediksi_away : '';
+                const isFinished = match.status === 'FINISHED';
+
+                // EKSEKUSI PANGGIL BENDERA (Mendukung fallback properti jika ada salah penamaan)
+                const homeTarget = match.home_team || match.home_team_code;
+                const awayTarget = match.away_team || match.away_team_code;
+
+                const homeFlag = getFlag(homeTarget);
+                const awayFlag = getFlag(awayTarget);
+
+                let poinDapatHTML = '';
+                if (isFinished && savedPrediction) {
+                    const skorCocok = (savedPrediction.prediksi_home === match.home_score) &&
+                                      (savedPrediction.prediksi_away === match.away_score);
+                    poinDapatHTML = skorCocok
+                        ? `<span class="point-badge correct">🎉 +3 Poin — Tepat!</span>`
+                        : `<span class="point-badge wrong">❌ +0 Poin — Salah</span>`;
+                } else if (isFinished && !savedPrediction) {
+                    poinDapatHTML = `<span class="point-badge skip">⚪ Tidak Ikut Tebak</span>`;
+                }
+
+                const finalScoreHTML = isFinished ? `
+                    <div class="final-score-box">
+                        <div class="final-score-label">Skor Akhir</div>
+                        <div class="final-score-value">${match.home_score} : ${match.away_score}</div>
+                    </div>` : '';
+
+                const actionHTML = isFinished
+                    ? `<div class="btn-locked">🔒 Terkunci</div>${poinDapatHTML}`
+                    : `<button class="btn-submit" onclick="submitPrediction(${match.id})">
+                            ${savedPrediction ? '🔄 Update Tebakan' : '🔥 Kirim Tebakan'}
+                       </button>`;
+
+                const card = document.createElement('div');
+                card.className = `match-card${isFinished ? ' is-finished' : ''}`;
+                card.innerHTML = `
+                    <div style="text-align:center;">
+                        <span class="stage-badge">${match.stage || 'Group Stage'}</span>
+                        <p class="match-time">🕒 ${matchDate} WIB</p>
+                    </div>
+
+                    ${finalScoreHTML}
+
+                    <div class="teams-row">
+                        <div class="team-side">
+                            <span class="team-flag">${homeFlag}</span>
+                            <span class="team-name">${match.home_team || homeTarget}</span>
+                        </div>
+
+                        <div class="score-cluster">
+                            ${!isFinished ? '<span class="score-cluster-label">Tebakan Lo</span>' : ''}
+                            <div class="score-inputs${isFinished ? ' locked' : ''}">
+                                <input type="number" placeholder="0" min="0"
+                                       value="${predHomeValue}"
+                                       ${isFinished ? 'disabled' : ''}
+                                       id="pred-home-${match.id}">
+                                <span class="score-divider">:</span>
+                                <input type="number" placeholder="0" min="0"
+                                       value="${predAwayValue}"
+                                       ${isFinished ? 'disabled' : ''}
+                                       id="pred-away-${match.id}">
+                            </div>
+                        </div>
+
+                        <div class="team-side">
+                            <span class="team-flag">${awayFlag}</span>
+                            <span class="team-name">${match.away_team || awayTarget}</span>
+                        </div>
+                    </div>
+
+                    <div class="action-area">${actionHTML}</div>
+                `;
+                container.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('match-container').innerHTML =
+                `<div class="empty-state" style="color:var(--red);">Gagal menyambung ke server backend.</div>`;
+        }
+    }
+
+    // ─── SUBMIT PREDICTION ───
+    async function submitPrediction(matchId) {
+        if (!loggedInUser || !loggedInUser.id) {
+            alert('Lo harus login dulu, bro!');
+            window.location.href = 'login.html';
+            return;
         }
 
-        window.onload = function() {
-            loadMatches();
-            loadLeaderboard();
-        };
-    </script>
+        const homeScore = document.getElementById(`pred-home-${matchId}`).value;
+        const awayScore = document.getElementById(`pred-away-${matchId}`).value;
+
+        if (homeScore === '' || awayScore === '') {
+            alert('Isi dulu skor tebakan lo, bro!');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: loggedInUser.id,
+                    match_id: matchId,
+                    prediksi_home: parseInt(homeScore),
+                    prediksi_away: parseInt(awayScore)
+                })
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert('🔥 Mantap! ' + result.message);
+                loadMatches();
+            } else {
+                alert('Gagal: ' + (result.details || result.error));
+            }
+        } catch (error) {
+            alert('Terjadi error saat mengirim data.');
+        }
+    }
+
+    // ─── LEADERBOARD ───
+    async function loadLeaderboard() {
+        try {
+            const response = await fetch('/api/leaderboard');
+            const users = await response.json();
+
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = '';
+
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="empty-state">Belum ada data peringkat user.</td></tr>`;
+                return;
+            }
+
+            users.forEach((user, index) => {
+                const row = document.createElement('tr');
+                if (index === 0) row.classList.add('rank-1');
+
+                let rankDisplay = index + 1;
+                if (index === 0) rankDisplay = '🥇';
+                else if (index === 1) rankDisplay = '🥈';
+                else if (index === 2) rankDisplay = '🥉';
+
+                row.innerHTML = `
+                    <td class="lb-rank">${rankDisplay}</td>
+                    <td class="lb-name">${user.username}</td>
+                    <td class="lb-pts">${user.total_points || 0} pts</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Gagal memuat leaderboard:', error);
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('user');
+        alert('Berhasil logout! Sampai jumpa lagi, bro.');
+        window.location.href = 'login.html';
+    }
+
+    window.onload = function () {
+        loadMatches();
+        loadLeaderboard();
+    };
+</script>
 </body>
 </html>
